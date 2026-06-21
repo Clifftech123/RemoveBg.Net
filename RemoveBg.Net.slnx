@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="RemoveBg.Net/RemoveBg.Net.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="RemoveBg.Net.Tests/RemoveBg.Net.Tests.csproj" />
+  </Folder>
+</Solution>
