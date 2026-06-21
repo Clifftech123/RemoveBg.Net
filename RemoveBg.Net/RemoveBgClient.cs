@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace RemoveBg.Net
 {
-    public sealed class RemoveBgClient : IDisposable
+    public sealed class RemoveBgClient : IRemoveBgClient, IDisposable
     {
         private const string DefaultBaseUrl = "https://api.remove.bg/v1.0/";
         private const string ApiKeyHeader = "X-Api-Key";
