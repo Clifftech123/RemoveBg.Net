@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace RemoveBg;
+namespace RemoveBg.Net;
 
 /// <summary>Credit balance and free-call allowance for a remove.bg account.</summary>
 public sealed class AccountInfo
@@ -41,20 +41,18 @@ public sealed class AccountInfo
 
     internal static AccountInfo Parse(string json)
     {
-        using (var doc = JsonDocument.Parse(json))
-        {
-            var attributes = doc.RootElement.GetProperty("data").GetProperty("attributes");
-            var credits = attributes.GetProperty("credits");
-            var api = attributes.GetProperty("api");
+        using var doc = JsonDocument.Parse(json);
+        var attributes = doc.RootElement.GetProperty("data").GetProperty("attributes");
+        var credits = attributes.GetProperty("credits");
+        var api = attributes.GetProperty("api");
 
-            return new AccountInfo(
-                GetDouble(credits, "total"),
-                GetDouble(credits, "subscription"),
-                GetDouble(credits, "payg"),
-                GetDouble(credits, "enterprise"),
-                api.TryGetProperty("free_calls", out var fc) && fc.TryGetInt32(out var fcv) ? fcv : 0,
-                api.TryGetProperty("sizes", out var s) ? s.GetString() : null);
-        }
+        return new AccountInfo(
+            GetDouble(credits, "total"),
+            GetDouble(credits, "subscription"),
+            GetDouble(credits, "payg"),
+            GetDouble(credits, "enterprise"),
+            api.TryGetProperty("free_calls", out var fc) && fc.TryGetInt32(out var fcv) ? fcv : 0,
+            api.TryGetProperty("sizes", out var s) ? s.GetString() : null);
     }
 
     private static double GetDouble(JsonElement element, string name)
