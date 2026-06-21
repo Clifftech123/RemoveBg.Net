@@ -75,7 +75,7 @@ catch (RemoveBgException ex)
         Console.WriteLine($"Rate limited — retry after {ex.RetryAfter}s");
 
     foreach (var error in ex.Errors)
-        Console.WriteLine($"{error.Title}: {error.Detail}");
+        Console.WriteLine($"{error.Title}: {error.Detail} (code: {error.Code})");
 }
 ```
 
