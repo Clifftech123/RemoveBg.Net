@@ -2,15 +2,7 @@
 
 An unofficial .NET client for the [remove.bg](https://www.remove.bg/api) background-removal API.
 
-This is the .NET counterpart to the existing [Node](https://www.npmjs.com/package/remove.bg),
-[Ruby](https://github.com/remove-bg/ruby) and PHP clients. It is **not** affiliated with
-or endorsed by Kaleido (the company behind remove.bg).
-
-- Targets `netstandard2.0` and `net10`
-- URL, file, byte-array, stream and base64 inputs
-- Strongly-typed options and result metadata
-- Friendly error handling via `RemoveBgException`
-- Account / credit lookup
+> Not affiliated with or endorsed by Kaleido (the company behind remove.bg).
 
 ## Install
 
@@ -18,80 +10,69 @@ or endorsed by Kaleido (the company behind remove.bg).
 dotnet add package RemoveBg.Net
 ```
 
-## Quick start
+## 1 — Register
+
+One line in `Program.cs`:
 
 ```csharp
-using RemoveBg;
-
-using var client = new RemoveBgClient("YOUR_API_KEY");
-
-var result = await client.RemoveFromFileAsync("input.jpg");
-await result.SaveAsync("output.png");
-
-Console.WriteLine($"Charged {result.CreditsCharged} credits, detected: {result.DetectedType}");
+builder.Services.AddRemoveBg("YOUR_API_KEY");
 ```
 
-## Inputs
+That's it. `IHttpClientFactory` is wired up automatically so connection pooling and DNS refresh are handled for you.
+
+## 2 — Inject and use
+
+Inject `IRemoveBgClient` into any service, controller, or minimal-API handler:
 
 ```csharp
-// From a public URL
-var fromUrl = await client.RemoveFromUrlAsync("https://example.com/photo.jpg");
-
-// From a local file
-var fromFile = await client.RemoveFromFileAsync("photo.jpg");
-
-// From raw bytes
-byte[] bytes = await File.ReadAllBytesAsync("photo.jpg");
-var fromBytes = await client.RemoveFromBytesAsync(bytes, "photo.jpg");
-
-// From a stream
-await using var stream = File.OpenRead("photo.jpg");
-var fromStream = await client.RemoveFromStreamAsync(stream, "photo.jpg");
-
-// From a base64 string
-var fromBase64 = await client.RemoveFromBase64Async(base64String);
+public class ImageService(IRemoveBgClient removeBg)
+{
+    public async Task<byte[]> RemoveBackgroundAsync(string imageUrl)
+    {
+        var result = await removeBg.RemoveFromUrlAsync(imageUrl);
+        return result.Content;
+    }
+}
 ```
 
-Every method returns a `RemoveBgResult`. Access the bytes directly via `result.Content`,
-the base64 form via `result.Base64`, or persist with `result.Save(path)` / `result.SaveAsync(path)`.
+## Methods
+
+| Method | Input |
+|---|---|
+| `RemoveFromUrlAsync(url, options?, ct?)` | Public image URL |
+| `RemoveFromFileAsync(path, options?, ct?)` | Local file path |
+| `RemoveFromBytesAsync(bytes, fileName?, options?, ct?)` | Raw byte array |
+| `GetAccountInfoAsync(ct?)` | — returns `AccountInfo` |
+
+The result exposes `result.Content` (bytes), `result.Base64`, `result.Save(path)`, and `result.SaveAsync(path)`.
 
 ## Options
 
+Pass a `RemoveBgOptions` to any remove method — only the properties you set are sent:
+
 ```csharp
-var options = new RemoveBgOptions
+var result = await removeBg.RemoveFromFileAsync("photo.jpg", new RemoveBgOptions
 {
-    Size            = ImageSize.Full,      // preview (default) | full | 4k | auto | ...
-    Type            = ImageType.Person,    // auto | person | product | car | ...
-    Format          = OutputFormat.Png,    // auto | png | jpg | zip
+    Size            = ImageSize.Full,
+    Type            = ImageType.Person,
+    Format          = OutputFormat.Png,
+    BackgroundColor = "81d4fa",
     Crop            = true,
     CropMargin      = "10%",
-    BackgroundColor = "81d4fa",            // hex or color name
-    Channels        = ChannelsType.Rgba,   // rgba (default) | alpha
-    AddShadow       = false,
-    Scale           = "80%",
-    Position        = "center"
-};
-
-var result = await client.RemoveFromFileAsync("car.jpg", options);
-await result.SaveAsync("car-no-bg.png");
+});
 ```
 
-Only the properties you set are sent; everything else uses the remove.bg defaults.
-
 ## Error handling
-
-A non-success response throws `RemoveBgException`, which carries the status code and the
-structured errors from the API:
 
 ```csharp
 try
 {
-    var result = await client.RemoveFromFileAsync("photo.jpg");
+    var result = await removeBg.RemoveFromUrlAsync(url);
 }
 catch (RemoveBgException ex)
 {
     if (ex.IsRateLimited)
-        Console.WriteLine($"Rate limited. Retry after {ex.RetryAfter}s.");
+        Console.WriteLine($"Rate limited — retry after {ex.RetryAfter}s");
 
     foreach (var error in ex.Errors)
         Console.WriteLine($"{error.Title}: {error.Detail}");
@@ -101,35 +82,19 @@ catch (RemoveBgException ex)
 ## Account & credits
 
 ```csharp
-var account = await client.GetAccountAsync();
-Console.WriteLine($"Total credits: {account.TotalCredits}");
-Console.WriteLine($"Free preview calls left: {account.FreeApiCalls}");
+var info = await removeBg.GetAccountInfoAsync();
+Console.WriteLine($"Credits remaining: {info.TotalCredits}");
+Console.WriteLine($"Free calls left:   {info.FreeApiCalls}");
 ```
 
-## Dependency injection / IHttpClientFactory
+---
 
-Pass your own `HttpClient` to use the factory and avoid socket exhaustion. In this overload
-the client does **not** dispose the `HttpClient` for you:
+**No DI?** For scripts or console apps, instantiate directly and dispose when done:
 
 ```csharp
-services.AddHttpClient();
-
-services.AddTransient(sp =>
-{
-    var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    return new RemoveBgClient("YOUR_API_KEY", http);
-});
-```
-
-
-
-
-## Building
-
-```bash
-dotnet build
-dotnet test
-dotnet pack src/RemoveBg.Net -c Release   # produces the .nupkg
+using var client = new RemoveBgClient("YOUR_API_KEY");
+var result = await client.RemoveFromFileAsync("input.jpg");
+await result.SaveAsync("output.png");
 ```
 
 ## License
