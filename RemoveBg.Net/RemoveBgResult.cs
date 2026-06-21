@@ -60,17 +60,8 @@
         public int? RetryAfter { get; }
 
         /// <summary>Writes the processed image to disk asynchronously.</summary>
-        public async Task SaveAsync(string path, CancellationToken cancellationToken = default)
-        {
-#if NETSTANDARD2_0
-        using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
-        {
-            await fs.WriteAsync(Content, 0, Content.Length, cancellationToken).ConfigureAwait(false);
-        }
-#else
-            await File.WriteAllBytesAsync(path, Content, cancellationToken).ConfigureAwait(false);
-#endif
-        }
+        public Task SaveAsync(string path, CancellationToken cancellationToken = default)
+            => File.WriteAllBytesAsync(path, Content, cancellationToken);
 
         /// <summary>Writes the processed image to disk.</summary>
         public void Save(string path) => File.WriteAllBytes(path, Content);
